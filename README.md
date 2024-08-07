@@ -104,6 +104,6 @@ This project is licensed under the GNU General Public License (GPL) v3.0. See th
 
 ### Why GPL v3?
 
-We have chosen the GPL v3 license to enforce strong copyleft requirements and ensure that all derivative works of this project remain open source. This license also provides additional protections against patent claims, aligning with our goal to keep contributions and derivatives freely available and to safeguard the project's integrity and freedom.
+The GPL v3 license enforces strong copyleft requirements and ensures that all derivative works of this project remain open source. This license also provides additional protections against patent claims, aligning with our goal to keep contributions and derivatives freely available and to safeguard the project's integrity and freedom.
 
 ---
