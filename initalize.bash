@@ -1,66 +1,101 @@
 #!/bin/bash
 
-# Prompt the user for the Amplify project name
-read -p "Enter the AWS Amplify project name: " project_name
+set -euo pipefail
 
-# Initialize an error flag
-errors="NO"
-
-# Function to log and set the error flag
-log_error() {
-    echo "Error occurred in: $1"
-    errors="YES"
+# Function to log messages
+log() {
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
 }
 
-# Update and upgrade the system
-sudo apt update || log_error "apt update"
-sudo apt full-upgrade -y || log_error "apt full-upgrade"
+# Function to log errors
+log_error() {
+    log "ERROR: $1" >&2
+}
 
-# Install necessary packages
-sudo apt install unzip curl -y || log_error "install unzip and curl"
+# Function to check command availability
+check_command() {
+    if ! command -v "$1" &> /dev/null; then
+        log_error "Command '$1' could not be found. Please install it and try again."
+        exit 1
+    fi
+}
 
-# Download and install AWS CLI
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" || log_error "download AWS CLI"
-unzip awscliv2.zip || log_error "unzip AWS CLI"
-sudo ./aws/install || log_error "install AWS CLI"
-rm awscliv2.zip || log_error "remove awscliv2.zip"
-rm -rf aws || log_error "remove aws directory"
+# Function to install a package
+install_package() {
+    if ! dpkg -s "$1" &> /dev/null; then
+        log "Installing $1..."
+        sudo apt install -y "$1" || { log_error "Failed to install $1"; exit 1; }
+    else
+        log "$1 is already installed."
+    fi
+}
 
-# Install Node Version Manager (NVM) and Node.js
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash || log_error "install NVM"
-source ~/.nvm/nvm.sh
-nvm install node || log_error "install Node.js"
+# Main script execution
+main() {
+    # Prompt the user for the Amplify project name
+    read -p "Enter the AWS Amplify project name: " project_name
 
-# Verify installations
-nvm -v
-node -v
-npm -v
-aws --version
+    # Update and upgrade the system
+    log "Updating system..."
+    sudo apt update && sudo apt full-upgrade -y || { log_error "System update failed"; exit 1; }
 
-# Conditional logging based on errors
-if [ "$errors" == "YES" ]; then
-    echo "There were errors during the installation. Please check the log above."
-else
-    echo "All packages installed successfully."
-    echo "nvm installed..."
-    echo "Node.js installed..."
-    echo "AWS CLI installed. PATH updated and reloaded..."
-fi
+    # Install necessary packages
+    install_package unzip
+    install_package curl
 
-# Configure AWS CLI
-echo "Configuring AWS programmatic access"
-aws configure
+    # Download and install AWS CLI
+    if ! command -v aws &> /dev/null; then
+        log "Installing AWS CLI..."
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" || { log_error "AWS CLI download failed"; exit 1; }
+        unzip awscliv2.zip || { log_error "AWS CLI unzip failed"; exit 1; }
+        sudo ./aws/install || { log_error "AWS CLI installation failed"; exit 1; }
+        rm awscliv2.zip
+        rm -rf aws
+    else
+        log "AWS CLI is already installed."
+    fi
 
-# Install Amplify CLI
-npm install -g @aws-amplify/cli || log_error "install Amplify CLI"
-amplify --version
+    # Install Node Version Manager (NVM) and Node.js
+    if [ ! -d "$HOME/.nvm" ]; then
+        log "Installing NVM..."
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash || { log_error "NVM installation failed"; exit 1; }
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        nvm install node || { log_error "Node.js installation failed"; exit 1; }
+    else
+        log "NVM is already installed."
+    fi
 
-# Configure Amplify CLI
-amplify configure
+    # Verify installations
+    log "Verifying installations..."
+    check_command nvm
+    check_command node
+    check_command npm
+    check_command aws
 
-# Initialize a new Amplify project with the specified project name
-mkdir "$project_name"
-cd "$project_name"
-amplify init
+    # Configure AWS CLI
+    log "Configuring AWS CLI..."
+    aws configure
 
-echo "AWS Amplify project '$project_name' has been initialized successfully."
+    # Install Amplify CLI
+    if ! command -v amplify &> /dev/null; then
+        log "Installing Amplify CLI..."
+        npm install -g @aws-amplify/cli || { log_error "Amplify CLI installation failed"; exit 1; }
+    else
+        log "Amplify CLI is already installed."
+    fi
+
+    # Configure Amplify CLI
+    log "Configuring Amplify CLI..."
+    amplify configure
+
+    # Initialize a new Amplify project
+    log "Initializing Amplify project '$project_name'..."
+    mkdir -p "$project_name" && cd "$project_name" || { log_error "Failed to create project directory"; exit 1; }
+    amplify init
+
+    log "AWS Amplify project '$project_name' has been initialized successfully."
+}
+
+# Run the main function
+main
