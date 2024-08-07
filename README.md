@@ -18,8 +18,8 @@ Before running the setup script, ensure you have the following:
 First, clone this repository to your local machine or remote environment:
 
 ```bash
-git clone https://github.com/yourusername/aws-amplify-starter-template.git
-cd aws-amplify-starter-template
+git clone https://github.com/incrementalcapitalist/amplifier.git
+cd amplifier
 ```
 
 ### 2. Run the Initialization Script
